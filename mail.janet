@@ -57,6 +57,13 @@
     )
 )
 
+(defn get-item 
+    "Gets a mail-item by its db id"
+    [item_id]
+    (db/fetch [:mailitems item_id])
+)
+
+
 (defn receive-item 
     "Save an item to a mailbox"
     [address item] 
@@ -71,12 +78,28 @@
             (def box-id ((get-mb) :id))
             (def {:id item-id}  (create-item item))
             (def item-uuid (uuid/new))
-            (db/query ```Insert into mail_items_to_boxes (mailboxes_id, mailitems_id, guid) values (:box_id, :item_id, :uuid) ``` { 
-                :box_id box-id 
-                :item_id item-id 
-                :uuid item-uuid
+            (db/insert :mail_items_to_boxes { 
+                :mailboxes_id box-id 
+                :mailitems_id item-id 
+                :guid item-uuid
             })
         )
     )
 )
 
+(defn update-item 
+    "Update a mailbox item with new content (triggering any relevant hooks)"
+    [item_id new-content]
+    (db/update :mailitems item_id { :content new-content })
+)
+
+(defn copy-item 
+    "Copy an item to a new mailbox"
+    [to-addr item_id] 
+    (with-dyns [:db/connection (get-conn)]
+        (errs/ctx (string "Failed to copy item of id (" item_id") to " to-addr)
+            (def item (get-item item_id))
+            (receive-item to-addr { :content (item :content )})
+        ) 
+    )
+)
