@@ -1,6 +1,9 @@
 (import db)
 (import uuid)
-(import ./errs)
+(import err)
+(use praxis)
+(use ./models/mailbox)
+(use ./models/mailitem)
 
 # @task[]
 # Only used for debugging
@@ -23,30 +26,46 @@
         :address address
         :description description })))
 
+(defn get-box 
+  "Given an address, get the metadata for given mailbox"
+  [address] 
+  (with-dyns [:db/connection (get-conn)]
+    (def [mbox] (db/query ```
+              Select address, description, created_at, updated_at
+              from mailboxes mb
+              where mb.address = :address
+              ```
+              {:address address}))
+    (s/cast :to Mailbox :from mbox :fields [:address :description])
+    ))
 (defn read-box 
     "Given an address, list out all of the mail in that box" 
     [address]
     (with-dyns [:db/connection dbconn] 
+      (as?->
         (db/query ```
-            Select * 
+            Select mi.id, mi.content
             from mailboxes mb 
             left join mail_items_to_boxes as jt on mb.id = jt.mailboxes_id 
             left join mailitems as mi on mi.id = jt.mailitems_id 
             where mb.address = :address
             ``` 
-            {:address address})))
+            {:address address}) msgs
+        (map load-mail-item msgs))))
             
 (defn boxes 
     "List out all of the mailboxes and their addresses connected to this db"
     [] 
     (with-dyns [:db/connection (get-conn)]
-        (db/query `Select id, address, description from mailboxes`)))
+      (as?-> 
+        (db/query `Select id, address, description from mailboxes`) it
+        (map |(s/cast :to Mailbox :from $ :fields [:address :description]) it))))
             
 (defn- create-item 
     "Creates a mail item"
     [item] 
     (with-dyns [:db/connection (get-conn)] 
-        (errs/ctx (string "Failed to create a mail item: " (describe item))
+        (err/wrap (string "Failed to create a mail item: " (describe item))
             (db/insert :mailitems {:content (item :content)}))))
 
 (defn get-item 
@@ -60,11 +79,11 @@
     [address item] 
     (with-dyns [:db/connection (get-conn)] 
         (defn get-mb [] 
-            (errs/ctx "Failed in get-mb"
+            (err/wrap "Failed in get-mb"
                 (def results (db/query `Select id from mailboxes where address = :address` {:address address}))
                 (results 0)))
 
-        (errs/ctx (string "Failed to recieve an item " item " into a mailbox " address)
+        (err/wrap (string "Failed to recieve an item " item " into a mailbox " address)
             (def box-id ((get-mb) :id))
             (def {:id item-id}  (create-item item))
             (def item-uuid (uuid/new))
@@ -82,6 +101,6 @@
     "Copy an item to a new mailbox"
     [to-addr item_id] 
     (with-dyns [:db/connection (get-conn)]
-        (errs/ctx (string "Failed to copy item of id (" item_id") to " to-addr)
+        (err/wrap (string "Failed to copy item of id (" item_id") to " to-addr)
             (def item (get-item item_id))
             (receive-item to-addr { :content (item :content )}))))
