@@ -14,7 +14,6 @@
 (defn show-html [body] 
   (ok text/html body))
 
-
 (defn s. [& args] (string ;args))
 # @task[Document/fix (form) better, write more docs on how to work with Osprey]
 
@@ -35,7 +34,6 @@
           (def linkage (mail/receive-item (params :address) (new-item :vals)))
           (redirect (rt/show-box<- (params :address))))))
 
-
 (POST rt/add-mailbox 
       (def data (form/decode (request :body)))
       (def mbox (new-mbox data))
@@ -47,6 +45,10 @@
             (get-in mbox [:vals :description]))
           (redirect (rt/home<-)))))
 
+(GET rt/view-message 
+     (def msg-id (params :id))
+     (def msg (mail/get-message msg-id))
+     (show-html (v/mail-message msg)))
 
 (os/shell "start http://localhost:9001")
 (server 9001)

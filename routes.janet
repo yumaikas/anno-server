@@ -5,5 +5,5 @@
   show-box "/box/:addr"
   send-to-box "/send/:addr"
   add-mailbox "/add-mailbox"
-  view-item "/message/:id")
+  view-message "/message/:id")
 

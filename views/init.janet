@@ -36,7 +36,7 @@
 (defn mailbox [box messages] 
   (def item-link 
     {:title "View Message"
-     :fn |[:a {:href (rt/view-item<- (or ($ :id) "NIL"))} "View"] })
+     :fn |[:a {:href (rt/view-message<- (or ($ :id) "NIL"))} "View"] })
   (def item-header
     {:title "Content"
      :fn |[:div ($ :content)]})
@@ -56,6 +56,15 @@
                   (put-in it [:vals :address] (box  :address)))
             :action (rt/send-to-box<- (box :address))
             :submit-txt "Send message")]))
+
+(defn mail-message [item] 
+  (layout 
+    [:div
+     [:h2 "Viewing Message"]
+     [:br]
+     [:hr]
+     [:div (get-in item [:vals :content])]
+     [:hr]]))
 
 (defn fix-mail-item [item addr] 
   (layout 

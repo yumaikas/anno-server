@@ -60,19 +60,20 @@
       (as?-> 
         (db/query `Select id, address, description from mailboxes`) it
         (map |(s/cast :to Mailbox :from $ :fields [:address :description]) it))))
-            
-(defn- create-item 
+            (defn- create-item 
     "Creates a mail item"
     [item] 
     (with-dyns [:db/connection (get-conn)] 
-        (err/wrap (string "Failed to create a mail item: " (describe item))
-            (db/insert :mailitems {:content (item :content)}))))
+      (pp item)
+      (err/wrap (string "Failed to create a mail item: " (describe item))
+                (db/insert :mailitems {:content (item :content)}))))
 
-(defn get-item 
-    "Gets a mail-item by its db id"
-    [item_id]
-    (db/fetch [:mailitems item_id]))
-
+(defn get-message 
+  "Gets a mail-item by its db id"
+  [item_id]
+  (with-dyns [:db/connection (get-conn)]
+    (def [item] (db/query "Select content from mailitems where id = :id" {:id item_id}))
+    (s/cast :to MailItem :from item :fields [:id :content])))
 
 (defn receive-item 
     "Save an item to a mailbox"
@@ -101,6 +102,8 @@
     "Copy an item to a new mailbox"
     [to-addr item_id] 
     (with-dyns [:db/connection (get-conn)]
-        (err/wrap (string "Failed to copy item of id (" item_id") to " to-addr)
-            (def item (get-item item_id))
-            (receive-item to-addr { :content (item :content )}))))
+      (err/wrap (string "Failed to copy item of id (" item_id ") to " to-addr)
+                (pp "XEH")
+                (def item (get-message item_id))
+                (pp "test")
+                (receive-item to-addr { :content (item :content )}))))
